@@ -1,11 +1,22 @@
+import importlib
 import pickle
+import sys
+from pathlib import Path
 
 import pandas as pd
 from fastapi import FastAPI, Request
 
-from telco_churn_preprocessing import TelcoChurnPreprocessor  # required to unpickle the pipeline
+sys.modules.setdefault(
+    "telco_churn_preprocessing",
+    importlib.import_module("notebook.telco_churn_preprocessing"),
+)
 
-with open("telco_churn_model.pkl", "rb") as model_file:
+from notebook.telco_churn_preprocessing import TelcoChurnPreprocessor  # required to unpickle the pipeline
+
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "model" / "churn_model.pkl"
+
+with MODEL_PATH.open("rb") as model_file:
     pipeline = pickle.load(model_file)
 
 app = FastAPI()
@@ -21,3 +32,9 @@ async def predict(request: Request):
         "prediction": "Yes" if label == 1 else "No",
         "churn_probability": round(probability, 2),
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("app:app", host="0.0.0.0", port=8001)
